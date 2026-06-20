@@ -60,3 +60,17 @@ class AskResponse(BaseModel):
     answer: str
     sources: list[str]
     confidence: Literal["low", "medium", "high"]
+class SearchRequest(BaseModel):
+    query: str = Field(..., min_length=1)
+    top_k: int = Field(default=3, ge=1, le=10)
+
+
+class SearchResult(BaseModel):
+    source: str
+    score: int
+    snippet: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]

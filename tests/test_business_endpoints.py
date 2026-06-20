@@ -142,3 +142,28 @@ def test_ask_endpoint_uses_mock_dataset_summary():
     assert "1 high-risk deals" in data["answer"]
     assert "crm_customers.csv" in data["sources"]
     assert "sales_pipeline.csv" in data["sources"]
+def test_search_endpoint_returns_relevant_documents():
+    response = client.post(
+        "/search",
+        json={"query": "implementation delays onboarding", "top_k": 3},
+    )
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["query"] == "implementation delays onboarding"
+    assert isinstance(data["results"], list)
+    assert len(data["results"]) >= 1
+    assert data["results"][0]["score"] > 0
+
+
+def test_search_endpoint_respects_top_k():
+    response = client.post(
+        "/search",
+        json={"query": "customer risk deal", "top_k": 1},
+    )
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert len(data["results"]) <= 1

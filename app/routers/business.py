@@ -9,6 +9,8 @@ from app.schemas import (
     MeetingSummaryResponse,
     PipelineInsightsRequest,
     PipelineInsightsResponse,
+    SearchRequest,
+    SearchResponse,
 )
 from app.services.mock_services import (
     answer_business_question,
@@ -16,6 +18,7 @@ from app.services.mock_services import (
     build_meeting_summary,
     build_pipeline_insights,
 )
+from app.services.retrieval import keyword_search
 
 router = APIRouter(tags=["Business Intelligence"])
 
@@ -42,3 +45,8 @@ def create_meeting_summary(
 @router.post("/ask", response_model=AskResponse)
 def ask_business_question(request: AskRequest) -> AskResponse:
     return answer_business_question(request)
+
+
+@router.post("/search", response_model=SearchResponse)
+def search_internal_documents(request: SearchRequest) -> SearchResponse:
+    return keyword_search(request)
