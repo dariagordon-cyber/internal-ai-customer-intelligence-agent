@@ -35,7 +35,7 @@ The current version focuses on a clean FastAPI backend, structured data loading,
 | POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                    |
 | POST   | `/meeting-summary`   | Summarizes customer meeting information                                 |
 | POST   | `/ask`               | Answers a business question using mock customer and policy data         |
-
+| POST | `/search` | Searches internal policies and meeting transcripts using keyword retrieval |
 ## Project Structure
 
 ```text
