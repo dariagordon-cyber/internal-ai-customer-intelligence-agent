@@ -1,0 +1,6 @@
+customer_id,company_name,industry,region,account_manager,health_score,last_contact_date
+C001,Northstar Retail,Retail,UK,Anna Rossi,72,2026-06-10
+C002,MedCore Analytics,Healthcare,Germany,Luca Bianchi,45,2026-05-28
+C003,FinSight Group,Finance,Italy,Sofia Marino,81,2026-06-15
+C004,GreenGrid Energy,Energy,Netherlands,Marco Conti,58,2026-06-01
+C005,EduNova Systems,Education,Spain,Elena Ricci,66,2026-06-08

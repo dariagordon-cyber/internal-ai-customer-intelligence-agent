@@ -1,0 +1,20 @@
+Customer: MedCore Analytics
+Customer ID: C002
+Date: 2026-06-12
+Participants: Luca Bianchi, MedCore Operations Lead, MedCore IT Manager
+
+The customer expressed concern about implementation delays and asked for a clearer onboarding plan. 
+They mentioned that the internal technical team is still waiting for integration documentation. 
+The customer also asked whether the support team could provide a more detailed timeline before the end of the month.
+
+Main concerns:
+- unclear implementation timeline
+- missing integration documentation
+- insufficient onboarding support
+- need for proactive communication
+
+Action items:
+- send revised implementation timeline
+- share integration documentation
+- schedule onboarding follow-up
+- prepare risk update for account manager

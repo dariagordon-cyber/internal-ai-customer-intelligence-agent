@@ -1,0 +1,6 @@
+deal_id,customer_id,stage,value,probability,expected_close_date,risk_level
+D001,C001,Negotiation,45000,0.65,2026-07-15,medium
+D002,C002,Proposal,80000,0.35,2026-06-30,high
+D003,C003,Contract Review,60000,0.75,2026-07-05,low
+D004,C004,Discovery,30000,0.40,2026-08-01,medium
+D005,C005,Negotiation,52000,0.55,2026-07-20,medium
