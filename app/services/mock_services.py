@@ -8,15 +8,16 @@ from app.schemas import (
     MeetingSummaryResponse,
     PipelineInsightsRequest,
     PipelineInsightsResponse,
+    SearchRequest,
 )
 from app.services.data_loader import (
     find_customer_by_id,
     find_deals_by_customer_id,
     find_meeting_transcripts_by_customer_id,
     load_customers,
-    load_internal_policies,
     load_sales_pipeline,
 )
+from app.services.retrieval import keyword_search
 
 
 def build_customer_brief(request: CustomerBriefRequest) -> CustomerBriefResponse:
@@ -112,7 +113,7 @@ def build_pipeline_insights(
     main_risks = [
         "Low deal probability may reduce forecast reliability.",
         "High-risk deals require proactive account management.",
-        "Deals close to expected close date should be reviewed."
+        "Deals close to expected close date should be reviewed.",
     ]
 
     if request.region:
@@ -170,7 +171,6 @@ def build_meeting_summary(
 
 
 def answer_business_question(request: AskRequest) -> AskResponse:
-    policies = load_internal_policies()
     customers = load_customers()
     deals = load_sales_pipeline()
 
@@ -178,11 +178,29 @@ def answer_business_question(request: AskRequest) -> AskResponse:
         deal for deal in deals if deal["risk_level"] == "high"
     ]
 
+    search_response = keyword_search(
+        SearchRequest(query=request.question, top_k=3)
+    )
+
+    retrieved_sources = [
+        result.source for result in search_response.results
+    ]
+
+    if search_response.results:
+        retrieval_summary = (
+            "Relevant internal documents were found and used as supporting context."
+        )
+    else:
+        retrieval_summary = (
+            "No directly relevant internal documents were found for this question."
+        )
+
     answer = (
         f"The current mock dataset contains {len(customers)} customers and "
         f"{len(deals)} open deals. There are {len(high_risk_deals)} high-risk deals. "
+        f"{retrieval_summary} "
         "The strongest risk signal is a combination of low customer health, "
-        "low deal probability, and unresolved implementation concerns. "
+        "low deal probability, and unresolved implementation or onboarding concerns. "
         "The recommended next step is to prioritize high-risk accounts and schedule "
         "a follow-up with the customer within five business days."
     )
@@ -192,7 +210,7 @@ def answer_business_question(request: AskRequest) -> AskResponse:
         sources=[
             "crm_customers.csv",
             "sales_pipeline.csv",
-            *list(policies.keys()),
+            *retrieved_sources,
         ],
         confidence="medium",
     )
