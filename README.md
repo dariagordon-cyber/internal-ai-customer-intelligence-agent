@@ -1,6 +1,6 @@
 # Internal AI Customer Intelligence Agent
 
-A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, and business decision support using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
+A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, and retrieval-supported business answers using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
 
 ## Project Goal
 
@@ -11,8 +11,11 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * What are the main risks in the sales pipeline?
 * What happened in the latest customer meeting?
 * Which internal policy recommendations apply to a customer or deal?
+* Which internal documents are relevant to a business question?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, and tested API endpoints. Future extensions will add retrieval-augmented generation, hybrid search, agent tools, Docker, CI/CD, and cloud deployment.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, retrieval-supported answering, and tested API endpoints.
+
+Future extensions will add semantic retrieval, vector databases, hybrid search, grounded LLM answer generation, agent tools, Docker, CI/CD, and cloud deployment.
 
 ## Current Features
 
@@ -24,18 +27,21 @@ The current version focuses on a clean FastAPI backend, structured data loading,
 * Mock meeting transcript
 * Mock internal policy documents
 * Data loader service for CSV and text files
+* Keyword retrieval over meeting transcripts and internal policy documents
+* Keyword retrieval context used in the `/ask` endpoint
 * Tested business logic with pytest
 
 ## API Endpoints
 
-| Method | Endpoint             | Description                                                             |
-| ------ | -------------------- | ----------------------------------------------------------------------- |
-| GET    | `/health`            | Health check endpoint                                                   |
-| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data |
-| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                    |
-| POST   | `/meeting-summary`   | Summarizes customer meeting information                                 |
-| POST   | `/ask`               | Answers a business question using mock customer and policy data         |
-| POST | `/search` | Searches internal policies and meeting transcripts using keyword retrieval |
+| Method | Endpoint             | Description                                                                |
+| ------ | -------------------- | -------------------------------------------------------------------------- |
+| GET    | `/health`            | Health check endpoint                                                      |
+| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data    |
+| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                       |
+| POST   | `/meeting-summary`   | Summarizes customer meeting information                                    |
+| POST   | `/ask`               | Answers a business question using mock business data and retrieval context |
+| POST   | `/search`            | Searches internal policies and meeting transcripts using keyword retrieval |
+
 ## Project Structure
 
 ```text
@@ -48,6 +54,7 @@ internal-ai-customer-intelligence-agent/
     services/
       data_loader.py
       mock_services.py
+      retrieval.py
   data/
     crm_customers.csv
     sales_pipeline.csv
@@ -105,6 +112,74 @@ Example response:
 }
 ```
 
+## Example: Search Internal Documents
+
+Endpoint:
+
+```http
+POST /search
+```
+
+Request body:
+
+```json
+{
+  "query": "implementation delays onboarding",
+  "top_k": 3
+}
+```
+
+Example response:
+
+```json
+{
+  "query": "implementation delays onboarding",
+  "results": [
+    {
+      "source": "meeting_transcripts/medcore_analytics_2026_06_12.txt",
+      "score": 3,
+      "snippet": "Customer: MedCore Analytics\nCustomer ID: C002\nDate: 2026-06-12\nParticipants: Luca Bianchi, MedCore Operations Lead, MedCore IT Manager\n\nThe customer expressed concern about implementation delays and asked for a clearer onboarding plan."
+    },
+    {
+      "source": "internal_policies/high_risk_deal_policy.md",
+      "score": 2,
+      "snippet": "- The customer has unresolved implementation or onboarding concerns."
+    }
+  ]
+}
+```
+
+## Example: Ask a Retrieval-Supported Business Question
+
+Endpoint:
+
+```http
+POST /ask
+```
+
+Request body:
+
+```json
+{
+  "question": "Which customers have implementation or onboarding risks?"
+}
+```
+
+Example response:
+
+```json
+{
+  "answer": "The current mock dataset contains 5 customers and 5 open deals. There are 1 high-risk deals. Relevant internal documents were found and used as supporting context. The strongest risk signal is a combination of low customer health, low deal probability, and unresolved implementation or onboarding concerns. The recommended next step is to prioritize high-risk accounts and schedule a follow-up with the customer within five business days.",
+  "sources": [
+    "crm_customers.csv",
+    "sales_pipeline.csv",
+    "meeting_transcripts/medcore_analytics_2026_06_12.txt",
+    "internal_policies/high_risk_deal_policy.md"
+  ],
+  "confidence": "medium"
+}
+```
+
 ## Setup
 
 Create and activate a virtual environment:
@@ -151,6 +226,9 @@ The test suite checks:
 * Meeting transcript source usage
 * Business question response structure
 * Dataset summary usage in `/ask`
+* Keyword search over internal documents
+* `top_k` behavior in `/search`
+* Retrieval-supported answer generation in `/ask`
 
 ## Tech Stack
 
@@ -159,17 +237,42 @@ The test suite checks:
 * Pydantic
 * pytest
 * CSV and text-based mock data
+* Keyword retrieval
 * REST API design
+
+## Current Architecture
+
+The current backend follows a simple layered structure:
+
+```text
+API request
+  -> FastAPI router
+  -> Pydantic validation
+  -> service layer
+  -> data loader / keyword retrieval
+  -> structured API response
+```
+
+For retrieval-supported answering, the `/ask` endpoint follows this workflow:
+
+```text
+business question
+  -> keyword search over internal documents
+  -> retrieved sources and snippets
+  -> structured answer with supporting sources
+```
+
+This is an early retrieval-augmented workflow. It does not yet use embeddings or an external LLM.
 
 ## Roadmap
 
 Planned next steps:
 
-1. Add a simple keyword retrieval layer over internal policies and meeting transcripts.
+1. Improve keyword retrieval scoring and snippets.
 2. Add semantic retrieval using embeddings and a vector database.
 3. Implement hybrid search combining keyword and semantic retrieval.
 4. Add grounded LLM answer generation.
-5. Add agent-style tools for customer briefs, pipeline insights, and meeting summaries.
+5. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
 6. Add Docker support.
 7. Add GitHub Actions CI.
 8. Deploy the backend to AWS or GCP.
@@ -184,5 +287,7 @@ It is intended to show experience with:
 * Building structured FastAPI services
 * Designing business-focused API endpoints
 * Working with structured and unstructured mock business data
+* Implementing data loading and retrieval services
+* Adding retrieval context to answer generation
 * Implementing testable backend logic
 * Preparing a foundation for RAG, agent tools, and production deployment
