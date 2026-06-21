@@ -13,9 +13,9 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * Which internal policy recommendations apply to a customer or deal?
 * Which internal documents are relevant to a business question?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, retrieval-supported answering, Docker configuration, and tested API endpoints.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
 
-Future extensions will add semantic retrieval, vector databases, hybrid search, grounded LLM answer generation, agent tools, CI/CD, and cloud deployment.
+Future extensions will add semantic retrieval, vector databases, hybrid search, grounded LLM answer generation, agent tools, and cloud deployment.
 
 ## Current Features
 
@@ -30,6 +30,7 @@ Future extensions will add semantic retrieval, vector databases, hybrid search, 
 * Keyword retrieval over meeting transcripts and internal policy documents
 * Keyword retrieval context used in the `/ask` endpoint
 * Docker configuration for containerized execution
+* GitHub Actions CI for automated test execution
 * Tested business logic with pytest
 
 ## API Endpoints
@@ -67,6 +68,9 @@ internal-ai-customer-intelligence-agent/
   tests/
     test_health.py
     test_business_endpoints.py
+  .github/
+    workflows/
+      ci.yml
   .dockerignore
   Dockerfile
   requirements.txt
@@ -248,6 +252,23 @@ Expected response:
 
 Note: Docker Desktop must be installed and running before using these commands.
 
+## Continuous Integration
+
+The project includes a GitHub Actions CI workflow that runs automatically on push and pull request events.
+
+The CI workflow:
+
+* Checks out the repository
+* Sets up Python 3.12
+* Installs dependencies from `requirements.txt`
+* Runs the pytest test suite
+
+Workflow file:
+
+```text
+.github/workflows/ci.yml
+```
+
 ## Current Test Coverage
 
 The test suite checks:
@@ -274,6 +295,7 @@ The test suite checks:
 * CSV and text-based mock data
 * Keyword retrieval
 * Docker
+* GitHub Actions
 * REST API design
 
 ## Current Architecture
@@ -309,9 +331,8 @@ Planned next steps:
 3. Implement hybrid search combining keyword and semantic retrieval.
 4. Add grounded LLM answer generation.
 5. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
-6. Add GitHub Actions CI.
-7. Deploy the backend to AWS or GCP.
-8. Add a basic MCP server for tool integration.
+6. Deploy the backend to AWS or GCP.
+7. Add a basic MCP server for tool integration.
 
 ## Portfolio Relevance
 
@@ -325,4 +346,6 @@ It is intended to show experience with:
 * Implementing data loading and retrieval services
 * Adding retrieval context to answer generation
 * Writing tested backend logic
-* Preparing a foundation for RAG, agent tools, Docker, CI/CD, and production deployment
+* Adding Docker configuration
+* Adding GitHub Actions CI
+* Preparing a foundation for RAG, agent tools, and production deployment
