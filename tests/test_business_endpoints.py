@@ -142,6 +142,13 @@ def test_ask_endpoint_uses_mock_dataset_summary():
     assert "1 high-risk deals" in data["answer"]
     assert "crm_customers.csv" in data["sources"]
     assert "sales_pipeline.csv" in data["sources"]
+    assert "Relevant internal documents were found" in data["answer"]
+    assert any(
+        "internal_policies/" in source or "meeting_transcripts/" in source
+        for source in data["sources"]
+    )
+
+
 def test_search_endpoint_returns_relevant_documents():
     response = client.post(
         "/search",
@@ -167,3 +174,31 @@ def test_search_endpoint_respects_top_k():
 
     assert response.status_code == 200
     assert len(data["results"]) <= 1
+
+
+def test_search_endpoint_ranks_more_relevant_document_first():
+    response = client.post(
+        "/search",
+        json={"query": "implementation onboarding documentation", "top_k": 3},
+    )
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert len(data["results"]) >= 1
+    assert data["results"][0]["source"] == (
+        "meeting_transcripts/medcore_analytics_2026_06_12.txt"
+    )
+
+
+def test_search_endpoint_ignores_common_stopwords():
+    response = client.post(
+        "/search",
+        json={"query": "what are the implementation risks", "top_k": 3},
+    )
+
+    data = response.json()
+
+    assert response.status_code == 200
+    assert len(data["results"]) >= 1
+    assert all(result["score"] > 0 for result in data["results"])
