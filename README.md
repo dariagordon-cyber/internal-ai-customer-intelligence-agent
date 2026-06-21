@@ -13,7 +13,7 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * Which internal policy recommendations apply to a customer or deal?
 * Which internal documents are relevant to a business question?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, improved keyword retrieval, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
 
 Future extensions will add semantic retrieval, vector databases, hybrid search, grounded LLM answer generation, agent tools, and cloud deployment.
 
@@ -27,7 +27,7 @@ Future extensions will add semantic retrieval, vector databases, hybrid search, 
 * Mock meeting transcript
 * Mock internal policy documents
 * Data loader service for CSV and text files
-* Keyword retrieval over meeting transcripts and internal policy documents
+* Improved keyword retrieval over meeting transcripts and internal policy documents with stopword filtering, frequency-based scoring, ranked results, and focused snippets
 * Keyword retrieval context used in the `/ask` endpoint
 * Docker configuration for containerized execution
 * GitHub Actions CI for automated test execution
@@ -35,14 +35,14 @@ Future extensions will add semantic retrieval, vector databases, hybrid search, 
 
 ## API Endpoints
 
-| Method | Endpoint             | Description                                                                |
-| ------ | -------------------- | -------------------------------------------------------------------------- |
-| GET    | `/health`            | Health check endpoint                                                      |
-| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data    |
-| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                       |
-| POST   | `/meeting-summary`   | Summarizes customer meeting information                                    |
-| POST   | `/ask`               | Answers a business question using mock business data and retrieval context |
-| POST   | `/search`            | Searches internal policies and meeting transcripts using keyword retrieval |
+| Method | Endpoint             | Description                                                                         |
+| ------ | -------------------- | ----------------------------------------------------------------------------------- |
+| GET    | `/health`            | Health check endpoint                                                               |
+| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data             |
+| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                                |
+| POST   | `/meeting-summary`   | Summarizes customer meeting information                                             |
+| POST   | `/ask`               | Answers a business question using mock business data and retrieval context          |
+| POST   | `/search`            | Searches internal policies and meeting transcripts using improved keyword retrieval |
 
 ## Project Structure
 
@@ -145,7 +145,7 @@ Example response:
     {
       "source": "meeting_transcripts/medcore_analytics_2026_06_12.txt",
       "score": 3,
-      "snippet": "Customer: MedCore Analytics\nCustomer ID: C002\nDate: 2026-06-12\nParticipants: Luca Bianchi, MedCore Operations Lead, MedCore IT Manager\n\nThe customer expressed concern about implementation delays and asked for a clearer onboarding plan."
+      "snippet": "The customer expressed concern about implementation delays and asked for a clearer onboarding plan."
     },
     {
       "source": "internal_policies/high_risk_deal_policy.md",
@@ -285,6 +285,8 @@ The test suite checks:
 * Keyword search over internal documents
 * `top_k` behavior in `/search`
 * Retrieval-supported answer generation in `/ask`
+* Keyword retrieval ranking
+* Stopword filtering in search queries
 
 ## Tech Stack
 
@@ -320,19 +322,26 @@ business question
   -> structured answer with supporting sources
 ```
 
+The current retrieval layer uses:
+
+* Tokenization
+* Stopword filtering
+* Frequency-based keyword scoring
+* Ranked search results
+* Snippet selection based on query term overlap
+
 This is an early retrieval-augmented workflow. It does not yet use embeddings or an external LLM.
 
 ## Roadmap
 
 Planned next steps:
 
-1. Improve keyword retrieval scoring and snippets.
-2. Add semantic retrieval using embeddings and a vector database.
-3. Implement hybrid search combining keyword and semantic retrieval.
-4. Add grounded LLM answer generation.
-5. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
-6. Deploy the backend to AWS or GCP.
-7. Add a basic MCP server for tool integration.
+1. Add semantic retrieval using embeddings and a vector database.
+2. Implement hybrid search combining keyword and semantic retrieval.
+3. Add grounded LLM answer generation.
+4. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
+5. Deploy the backend to AWS or GCP.
+6. Add a basic MCP server for tool integration.
 
 ## Portfolio Relevance
 
@@ -344,6 +353,7 @@ It is intended to show experience with:
 * Designing business-focused API endpoints
 * Working with structured and unstructured mock business data
 * Implementing data loading and retrieval services
+* Improving keyword retrieval with ranking and stopword filtering
 * Adding retrieval context to answer generation
 * Writing tested backend logic
 * Adding Docker configuration
