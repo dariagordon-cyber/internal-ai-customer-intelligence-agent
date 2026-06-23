@@ -1,6 +1,6 @@
 # Internal AI Customer Intelligence Agent
 
-A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, semantic retrieval, and retrieval-supported business answers using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
+A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, semantic retrieval, hybrid search, and grounded answer generation using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
 
 ## Project Goal
 
@@ -13,10 +13,11 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * Which internal policy recommendations apply to a customer or deal?
 * Which internal documents are relevant to a business question?
 * Which documents are semantically related to a business problem, even when the exact keywords differ?
+* What grounded answer can be generated from retrieved internal business context?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, semantic retrieval with embeddings, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, semantic retrieval with embeddings, hybrid search, retrieval-supported answering, optional LLM-grounded answer generation, Docker configuration, GitHub Actions CI, and tested API endpoints.
 
-Future extensions will add hybrid search, grounded LLM answer generation, agent tools, cloud deployment, and a basic MCP server for tool integration.
+Future extensions will add agent tools, cloud deployment, and a basic MCP server for tool integration.
 
 ## Current Features
 
@@ -32,7 +33,10 @@ Future extensions will add hybrid search, grounded LLM answer generation, agent 
 * Improved keyword retrieval with stopword filtering, frequency-based scoring, ranked results, and focused snippets
 * Semantic retrieval using Sentence Transformers embeddings
 * ChromaDB-based vector search over internal business documents
-* Retrieval context used in the `/ask` endpoint
+* Hybrid search combining keyword retrieval and semantic retrieval
+* Retrieval-supported `/ask` endpoint
+* Grounded answer generation layer with optional OpenAI integration
+* Fallback grounded answer generation when no `OPENAI_API_KEY` is available
 * Docker configuration for containerized execution
 * GitHub Actions CI for automated test execution
 * Tested business logic with pytest
@@ -45,9 +49,10 @@ Future extensions will add hybrid search, grounded LLM answer generation, agent 
 | POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data                     |
 | POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                                        |
 | POST   | `/meeting-summary`   | Summarizes customer meeting information                                                     |
-| POST   | `/ask`               | Answers a business question using mock business data and retrieval context                  |
+| POST   | `/ask`               | Answers a business question using hybrid retrieval and grounded answer generation           |
 | POST   | `/search`            | Searches internal policies and meeting transcripts using keyword retrieval                  |
 | POST   | `/semantic-search`   | Searches internal policies and meeting transcripts using embedding-based semantic retrieval |
+| POST   | `/hybrid-search`     | Combines keyword and semantic retrieval into a single ranked result list                    |
 
 ## Project Structure
 
@@ -63,6 +68,8 @@ internal-ai-customer-intelligence-agent/
       mock_services.py
       retrieval.py
       semantic_retrieval.py
+      hybrid_retrieval.py
+      llm_service.py
   data/
     crm_customers.csv
     sales_pipeline.csv
@@ -74,6 +81,8 @@ internal-ai-customer-intelligence-agent/
   tests/
     test_health.py
     test_business_endpoints.py
+    test_hybrid_search_endpoint.py
+    test_llm_service.py
   .github/
     workflows/
       ci.yml
@@ -201,6 +210,49 @@ Example response:
 
 The exact score values may differ because they depend on embedding similarity calculations.
 
+## Example: Hybrid Search Internal Documents
+
+Endpoint:
+
+```http
+POST /hybrid-search
+```
+
+Request body:
+
+```json
+{
+  "query": "customer is worried about onboarding and implementation timeline",
+  "top_k": 3
+}
+```
+
+Example response:
+
+```json
+{
+  "query": "customer is worried about onboarding and implementation timeline",
+  "results": [
+    {
+      "source": "meeting_transcripts/medcore_analytics_2026_06_12.txt",
+      "hybrid_score": 0.8912,
+      "keyword_score": 0.75,
+      "semantic_score": 0.9676,
+      "snippet": "The customer expressed concern about implementation delays."
+    },
+    {
+      "source": "internal_policies/high_risk_deal_policy.md",
+      "hybrid_score": 0.8123,
+      "keyword_score": 0.6,
+      "semantic_score": 0.9265,
+      "snippet": "A deal should be treated as high risk if customer concerns are unresolved."
+    }
+  ]
+}
+```
+
+The hybrid score combines normalized keyword relevance and semantic similarity.
+
 ## Example: Ask a Retrieval-Supported Business Question
 
 Endpoint:
@@ -217,11 +269,11 @@ Request body:
 }
 ```
 
-Example response:
+Example response without an OpenAI API key:
 
 ```json
 {
-  "answer": "The current mock dataset contains 5 customers and 5 open deals. There are 1 high-risk deals. Relevant internal documents were found and used as supporting context. The strongest risk signal is a combination of low customer health, low deal probability, and unresolved implementation or onboarding concerns. The recommended next step is to prioritize high-risk accounts and schedule a follow-up with the customer within five business days.",
+  "answer": "The current mock dataset contains 5 customers and 5 open deals. There are 1 high-risk deals. Relevant internal documents were found and used as supporting context. Based on the retrieved internal context, the main risk signals are connected to customer health, deal risk, implementation concerns, onboarding issues, or unresolved customer follow-up needs. Most relevant retrieved sources: meeting_transcripts/medcore_analytics_2026_06_12.txt, internal_policies/high_risk_deal_policy.md. Retrieved evidence summary: The customer expressed concern about implementation delays. A deal should be treated as high risk if customer concerns are unresolved.",
   "sources": [
     "crm_customers.csv",
     "sales_pipeline.csv",
@@ -231,6 +283,8 @@ Example response:
   "confidence": "medium"
 }
 ```
+
+When `OPENAI_API_KEY` is available, the `/ask` endpoint can generate a grounded answer using the retrieved hybrid search context. Without an API key, the project still works using deterministic fallback answer generation.
 
 ## Setup
 
@@ -268,8 +322,32 @@ pytest
 Expected result:
 
 ```text
-16 passed
+21 passed
 ```
+
+## Optional OpenAI Configuration
+
+The project works without an OpenAI API key because it includes fallback grounded answer generation.
+
+To enable LLM-generated grounded answers, set:
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+```
+
+Optional model override:
+
+```bash
+export OPENAI_MODEL="gpt-4o-mini"
+```
+
+Then run:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+The `/ask` endpoint will use the retrieved hybrid search context and send it to the configured OpenAI model. If the API key is missing or the API call fails, the system falls back to deterministic grounded answer generation.
 
 ## Semantic Retrieval Note
 
@@ -282,6 +360,22 @@ The `/semantic-search` endpoint uses:
 The first semantic search request may take longer because the embedding model may need to be downloaded and loaded locally.
 
 The semantic retrieval layer currently uses an in-memory Chroma collection. This is suitable for a portfolio prototype and local development. A later version can persist the vector store to disk or connect to a managed vector database.
+
+## Grounded Answer Generation Note
+
+The `/ask` endpoint uses the following workflow:
+
+```text
+business question
+  -> hybrid retrieval
+  -> retrieved sources and snippets
+  -> grounded answer generation
+  -> answer with sources and confidence
+```
+
+The LLM service builds a retrieval context from hybrid search results. If `OPENAI_API_KEY` is available, it sends the question and retrieved context to the OpenAI API. If no API key is available, it returns a deterministic fallback grounded answer.
+
+This design keeps the project usable in local development, CI, and portfolio review without requiring private credentials.
 
 ## Docker
 
@@ -332,7 +426,7 @@ Workflow file:
 .github/workflows/ci.yml
 ```
 
-The semantic search endpoint tests use mocking to keep CI fast and stable. This avoids downloading the embedding model during automated test execution.
+Semantic search, hybrid search, and LLM-related tests use mocking where appropriate to keep CI fast and stable. This avoids downloading the embedding model or requiring an OpenAI API key during automated test execution.
 
 ## Current Test Coverage
 
@@ -354,6 +448,11 @@ The test suite checks:
 * Stopword filtering in search queries
 * Semantic search response structure
 * Semantic search response schema
+* Hybrid search response structure
+* Hybrid search response schema
+* Retrieval context construction for grounded answer generation
+* Fallback grounded answer generation without an API key
+* Empty retrieval result handling in the LLM service
 
 ## Tech Stack
 
@@ -366,20 +465,23 @@ The test suite checks:
 * Sentence Transformers
 * ChromaDB
 * Semantic search
+* Hybrid search
+* OpenAI API integration
+* Grounded answer generation
 * Docker
 * GitHub Actions
 * REST API design
 
 ## Current Architecture
 
-The current backend follows a simple layered structure:
+The current backend follows a layered structure:
 
 ```text
 API request
   -> FastAPI router
   -> Pydantic validation
   -> service layer
-  -> data loader / retrieval layer
+  -> data loader / retrieval layer / LLM layer
   -> structured API response
 ```
 
@@ -404,27 +506,35 @@ business query
   -> structured semantic search response
 ```
 
-For retrieval-supported answering, the `/ask` endpoint currently follows this workflow:
+For hybrid search, the `/hybrid-search` endpoint follows this workflow:
+
+```text
+business query
+  -> keyword retrieval
+  -> semantic retrieval
+  -> score normalization
+  -> weighted hybrid scoring
+  -> ranked hybrid results
+```
+
+For grounded answer generation, the `/ask` endpoint follows this workflow:
 
 ```text
 business question
-  -> keyword search over internal documents
-  -> retrieved sources and snippets
-  -> structured answer with supporting sources
+  -> hybrid search over internal documents
+  -> retrieval context construction
+  -> OpenAI grounded answer generation or fallback answer generation
+  -> structured answer with sources and confidence
 ```
-
-This is an early retrieval-augmented workflow. The current `/ask` endpoint does not yet use an external LLM for answer generation.
 
 ## Roadmap
 
 Planned next steps:
 
-1. Add hybrid search combining keyword and semantic retrieval.
-2. Update `/ask` to use hybrid retrieval context.
-3. Add grounded LLM answer generation using retrieved context.
-4. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
-5. Deploy the backend to AWS or GCP.
-6. Add a basic MCP server for tool integration.
+1. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
+2. Add an agent endpoint that selects the appropriate tool based on the user question.
+3. Deploy the backend to AWS or GCP.
+4. Add a basic MCP server for tool integration.
 
 ## Portfolio Relevance
 
@@ -438,8 +548,10 @@ It is intended to show experience with:
 * Implementing data loading and retrieval services
 * Improving keyword retrieval with ranking and stopword filtering
 * Adding semantic retrieval with embeddings and ChromaDB
-* Adding retrieval context to answer generation
+* Combining keyword and semantic retrieval through hybrid search
+* Building retrieval-supported answer generation
+* Adding optional LLM-grounded answer generation with fallback behavior
 * Writing tested backend logic
 * Adding Docker configuration
 * Adding GitHub Actions CI
-* Preparing a foundation for hybrid search, RAG, agent tools, and production deployment
+* Preparing a foundation for agent tools and production deployment
