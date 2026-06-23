@@ -87,3 +87,16 @@ class SemanticSearchResult(BaseModel):
 class SemanticSearchResponse(BaseModel):
     query: str
     results: list[SemanticSearchResult]
+
+
+class HybridSearchResult(BaseModel):
+    source: str
+    hybrid_score: float
+    keyword_score: float
+    semantic_score: float
+    snippet: str
+
+
+class HybridSearchResponse(BaseModel):
+    query: str
+    results: list[HybridSearchResult]
