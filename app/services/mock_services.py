@@ -17,7 +17,8 @@ from app.services.data_loader import (
     load_customers,
     load_sales_pipeline,
 )
-from app.services.retrieval import keyword_search
+from app.services.hybrid_retrieval import hybrid_search
+from app.services.llm_service import generate_grounded_answer
 
 
 def build_customer_brief(request: CustomerBriefRequest) -> CustomerBriefResponse:
@@ -178,15 +179,15 @@ def answer_business_question(request: AskRequest) -> AskResponse:
         deal for deal in deals if deal["risk_level"] == "high"
     ]
 
-    search_response = keyword_search(
+    retrieval_response = hybrid_search(
         SearchRequest(query=request.question, top_k=3)
     )
 
     retrieved_sources = [
-        result.source for result in search_response.results
+        result.source for result in retrieval_response.results
     ]
 
-    if search_response.results:
+    if retrieval_response.results:
         retrieval_summary = (
             "Relevant internal documents were found and used as supporting context."
         )
@@ -195,14 +196,16 @@ def answer_business_question(request: AskRequest) -> AskResponse:
             "No directly relevant internal documents were found for this question."
         )
 
+    grounded_answer, confidence = generate_grounded_answer(
+        question=request.question,
+        results=retrieval_response.results,
+    )
+
     answer = (
         f"The current mock dataset contains {len(customers)} customers and "
         f"{len(deals)} open deals. There are {len(high_risk_deals)} high-risk deals. "
         f"{retrieval_summary} "
-        "The strongest risk signal is a combination of low customer health, "
-        "low deal probability, and unresolved implementation or onboarding concerns. "
-        "The recommended next step is to prioritize high-risk accounts and schedule "
-        "a follow-up with the customer within five business days."
+        f"{grounded_answer}"
     )
 
     return AskResponse(
@@ -212,5 +215,5 @@ def answer_business_question(request: AskRequest) -> AskResponse:
             "sales_pipeline.csv",
             *retrieved_sources,
         ],
-        confidence="medium",
+        confidence=confidence,  # type: ignore[arg-type]
     )

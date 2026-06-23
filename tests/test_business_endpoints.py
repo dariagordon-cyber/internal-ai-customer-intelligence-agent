@@ -1,8 +1,14 @@
 from fastapi.testclient import TestClient
 
 import app.routers.business as business_router
+import app.services.mock_services as mock_services
 from app.main import app
-from app.schemas import SemanticSearchResponse, SemanticSearchResult
+from app.schemas import (
+    HybridSearchResponse,
+    HybridSearchResult,
+    SemanticSearchResponse,
+    SemanticSearchResult,
+)
 
 
 client = TestClient(app)
@@ -116,7 +122,31 @@ def test_meeting_summary_uses_transcript_source():
     assert "Integration documentation is missing." in data["customer_concerns"]
 
 
-def test_ask_endpoint_returns_answer_with_sources():
+def test_ask_endpoint_returns_answer_with_sources(monkeypatch):
+    def fake_hybrid_search(request):
+        return HybridSearchResponse(
+            query=request.query,
+            results=[
+                HybridSearchResult(
+                    source="meeting_transcripts/medcore_analytics_2026_06_12.txt",
+                    hybrid_score=0.8912,
+                    keyword_score=0.75,
+                    semantic_score=0.9676,
+                    snippet="The customer expressed concern about implementation delays.",
+                )
+            ],
+        )
+
+    def fake_generate_grounded_answer(question, results):
+        return "Grounded answer from mocked LLM layer.", "high"
+
+    monkeypatch.setattr(mock_services, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(
+        mock_services,
+        "generate_grounded_answer",
+        fake_generate_grounded_answer,
+    )
+
     response = client.post(
         "/ask",
         json={"question": "Which customers are at risk and why?"},
@@ -127,10 +157,36 @@ def test_ask_endpoint_returns_answer_with_sources():
     assert response.status_code == 200
     assert "answer" in data
     assert isinstance(data["sources"], list)
-    assert data["confidence"] in ["low", "medium", "high"]
+    assert data["confidence"] == "high"
+    assert "Grounded answer from mocked LLM layer." in data["answer"]
+    assert "meeting_transcripts/medcore_analytics_2026_06_12.txt" in data["sources"]
 
 
-def test_ask_endpoint_uses_mock_dataset_summary():
+def test_ask_endpoint_uses_mock_dataset_summary(monkeypatch):
+    def fake_hybrid_search(request):
+        return HybridSearchResponse(
+            query=request.query,
+            results=[
+                HybridSearchResult(
+                    source="internal_policies/high_risk_deal_policy.md",
+                    hybrid_score=0.8123,
+                    keyword_score=0.6,
+                    semantic_score=0.9265,
+                    snippet="High-risk deals require proactive account management.",
+                )
+            ],
+        )
+
+    def fake_generate_grounded_answer(question, results):
+        return "The customer should be prioritized for follow-up.", "medium"
+
+    monkeypatch.setattr(mock_services, "hybrid_search", fake_hybrid_search)
+    monkeypatch.setattr(
+        mock_services,
+        "generate_grounded_answer",
+        fake_generate_grounded_answer,
+    )
+
     response = client.post(
         "/ask",
         json={"question": "Which customers are at risk and why?"},
@@ -142,13 +198,11 @@ def test_ask_endpoint_uses_mock_dataset_summary():
     assert "5 customers" in data["answer"]
     assert "5 open deals" in data["answer"]
     assert "1 high-risk deals" in data["answer"]
+    assert "Relevant internal documents were found" in data["answer"]
+    assert "The customer should be prioritized for follow-up." in data["answer"]
     assert "crm_customers.csv" in data["sources"]
     assert "sales_pipeline.csv" in data["sources"]
-    assert "Relevant internal documents were found" in data["answer"]
-    assert any(
-        "internal_policies/" in source or "meeting_transcripts/" in source
-        for source in data["sources"]
-    )
+    assert "internal_policies/high_risk_deal_policy.md" in data["sources"]
 
 
 def test_search_endpoint_returns_relevant_documents():
