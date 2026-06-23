@@ -1,10 +1,10 @@
 # Internal AI Customer Intelligence Agent
 
-A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, and retrieval-supported business answers using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
+A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, semantic retrieval, and retrieval-supported business answers using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
 
 ## Project Goal
 
-The goal of this project is to simulate an internal AI-powered business tool that helps sales and customer success teams answer questions such as:
+The goal of this project is to simulate an internal AI-powered business tool that helps sales, customer success, and business operations teams answer questions such as:
 
 * Which customers are at risk?
 * What should an account manager know before a customer call?
@@ -12,10 +12,11 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * What happened in the latest customer meeting?
 * Which internal policy recommendations apply to a customer or deal?
 * Which internal documents are relevant to a business question?
+* Which documents are semantically related to a business problem, even when the exact keywords differ?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, improved keyword retrieval, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, semantic retrieval with embeddings, retrieval-supported answering, Docker configuration, GitHub Actions CI, and tested API endpoints.
 
-Future extensions will add semantic retrieval, vector databases, hybrid search, grounded LLM answer generation, agent tools, and cloud deployment.
+Future extensions will add hybrid search, grounded LLM answer generation, agent tools, cloud deployment, and a basic MCP server for tool integration.
 
 ## Current Features
 
@@ -27,22 +28,26 @@ Future extensions will add semantic retrieval, vector databases, hybrid search, 
 * Mock meeting transcript
 * Mock internal policy documents
 * Data loader service for CSV and text files
-* Improved keyword retrieval over meeting transcripts and internal policy documents with stopword filtering, frequency-based scoring, ranked results, and focused snippets
-* Keyword retrieval context used in the `/ask` endpoint
+* Keyword retrieval over meeting transcripts and internal policy documents
+* Improved keyword retrieval with stopword filtering, frequency-based scoring, ranked results, and focused snippets
+* Semantic retrieval using Sentence Transformers embeddings
+* ChromaDB-based vector search over internal business documents
+* Retrieval context used in the `/ask` endpoint
 * Docker configuration for containerized execution
 * GitHub Actions CI for automated test execution
 * Tested business logic with pytest
 
 ## API Endpoints
 
-| Method | Endpoint             | Description                                                                         |
-| ------ | -------------------- | ----------------------------------------------------------------------------------- |
-| GET    | `/health`            | Health check endpoint                                                               |
-| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data             |
-| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                                |
-| POST   | `/meeting-summary`   | Summarizes customer meeting information                                             |
-| POST   | `/ask`               | Answers a business question using mock business data and retrieval context          |
-| POST   | `/search`            | Searches internal policies and meeting transcripts using improved keyword retrieval |
+| Method | Endpoint             | Description                                                                                 |
+| ------ | -------------------- | ------------------------------------------------------------------------------------------- |
+| GET    | `/health`            | Health check endpoint                                                                       |
+| POST   | `/customer-brief`    | Generates a customer brief from mock CRM, pipeline, and transcript data                     |
+| POST   | `/pipeline-insights` | Returns sales pipeline risk insights                                                        |
+| POST   | `/meeting-summary`   | Summarizes customer meeting information                                                     |
+| POST   | `/ask`               | Answers a business question using mock business data and retrieval context                  |
+| POST   | `/search`            | Searches internal policies and meeting transcripts using keyword retrieval                  |
+| POST   | `/semantic-search`   | Searches internal policies and meeting transcripts using embedding-based semantic retrieval |
 
 ## Project Structure
 
@@ -57,6 +62,7 @@ internal-ai-customer-intelligence-agent/
       data_loader.py
       mock_services.py
       retrieval.py
+      semantic_retrieval.py
   data/
     crm_customers.csv
     sales_pipeline.csv
@@ -119,7 +125,7 @@ Example response:
 }
 ```
 
-## Example: Search Internal Documents
+## Example: Keyword Search Internal Documents
 
 Endpoint:
 
@@ -155,6 +161,45 @@ Example response:
   ]
 }
 ```
+
+## Example: Semantic Search Internal Documents
+
+Endpoint:
+
+```http
+POST /semantic-search
+```
+
+Request body:
+
+```json
+{
+  "query": "customer is worried about onboarding and implementation timeline",
+  "top_k": 3
+}
+```
+
+Example response:
+
+```json
+{
+  "query": "customer is worried about onboarding and implementation timeline",
+  "results": [
+    {
+      "source": "meeting_transcripts/medcore_analytics_2026_06_12.txt",
+      "score": 0.8123,
+      "snippet": "Customer: MedCore Analytics Meeting date: 2026-06-12 Customer ID: C002 Account manager: Luca Bianchi..."
+    },
+    {
+      "source": "internal_policies/high_risk_deal_policy.md",
+      "score": 0.7345,
+      "snippet": "# High-Risk Deal Policy A deal should be treated as high risk if one or more of the following conditions apply..."
+    }
+  ]
+}
+```
+
+The exact score values may differ because they depend on embedding similarity calculations.
 
 ## Example: Ask a Retrieval-Supported Business Question
 
@@ -220,6 +265,24 @@ Run tests:
 pytest
 ```
 
+Expected result:
+
+```text
+16 passed
+```
+
+## Semantic Retrieval Note
+
+The `/semantic-search` endpoint uses:
+
+* `sentence-transformers/all-MiniLM-L6-v2` for local text embeddings
+* ChromaDB as an in-memory vector database
+* Embedding-based similarity search over meeting transcripts and internal policy documents
+
+The first semantic search request may take longer because the embedding model may need to be downloaded and loaded locally.
+
+The semantic retrieval layer currently uses an in-memory Chroma collection. This is suitable for a portfolio prototype and local development. A later version can persist the vector store to disk or connect to a managed vector database.
+
 ## Docker
 
 The project includes Docker configuration for containerized execution.
@@ -269,6 +332,8 @@ Workflow file:
 .github/workflows/ci.yml
 ```
 
+The semantic search endpoint tests use mocking to keep CI fast and stable. This avoids downloading the embedding model during automated test execution.
+
 ## Current Test Coverage
 
 The test suite checks:
@@ -287,6 +352,8 @@ The test suite checks:
 * Retrieval-supported answer generation in `/ask`
 * Keyword retrieval ranking
 * Stopword filtering in search queries
+* Semantic search response structure
+* Semantic search response schema
 
 ## Tech Stack
 
@@ -296,6 +363,9 @@ The test suite checks:
 * pytest
 * CSV and text-based mock data
 * Keyword retrieval
+* Sentence Transformers
+* ChromaDB
+* Semantic search
 * Docker
 * GitHub Actions
 * REST API design
@@ -309,11 +379,32 @@ API request
   -> FastAPI router
   -> Pydantic validation
   -> service layer
-  -> data loader / keyword retrieval
+  -> data loader / retrieval layer
   -> structured API response
 ```
 
-For retrieval-supported answering, the `/ask` endpoint follows this workflow:
+For keyword retrieval, the `/search` endpoint follows this workflow:
+
+```text
+business query
+  -> tokenization
+  -> stopword filtering
+  -> keyword frequency scoring
+  -> ranked document snippets
+  -> structured search response
+```
+
+For semantic retrieval, the `/semantic-search` endpoint follows this workflow:
+
+```text
+business query
+  -> query embedding
+  -> ChromaDB vector search
+  -> semantically similar internal documents
+  -> structured semantic search response
+```
+
+For retrieval-supported answering, the `/ask` endpoint currently follows this workflow:
 
 ```text
 business question
@@ -322,23 +413,15 @@ business question
   -> structured answer with supporting sources
 ```
 
-The current retrieval layer uses:
-
-* Tokenization
-* Stopword filtering
-* Frequency-based keyword scoring
-* Ranked search results
-* Snippet selection based on query term overlap
-
-This is an early retrieval-augmented workflow. It does not yet use embeddings or an external LLM.
+This is an early retrieval-augmented workflow. The current `/ask` endpoint does not yet use an external LLM for answer generation.
 
 ## Roadmap
 
 Planned next steps:
 
-1. Add semantic retrieval using embeddings and a vector database.
-2. Implement hybrid search combining keyword and semantic retrieval.
-3. Add grounded LLM answer generation.
+1. Add hybrid search combining keyword and semantic retrieval.
+2. Update `/ask` to use hybrid retrieval context.
+3. Add grounded LLM answer generation using retrieved context.
 4. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
 5. Deploy the backend to AWS or GCP.
 6. Add a basic MCP server for tool integration.
@@ -354,8 +437,9 @@ It is intended to show experience with:
 * Working with structured and unstructured mock business data
 * Implementing data loading and retrieval services
 * Improving keyword retrieval with ranking and stopword filtering
+* Adding semantic retrieval with embeddings and ChromaDB
 * Adding retrieval context to answer generation
 * Writing tested backend logic
 * Adding Docker configuration
 * Adding GitHub Actions CI
-* Preparing a foundation for RAG, agent tools, and production deployment
+* Preparing a foundation for hybrid search, RAG, agent tools, and production deployment
