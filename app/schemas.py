@@ -60,6 +60,8 @@ class AskResponse(BaseModel):
     answer: str
     sources: list[str]
     confidence: Literal["low", "medium", "high"]
+
+
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(default=3, ge=1, le=10)
@@ -74,3 +76,14 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     results: list[SearchResult]
+
+
+class SemanticSearchResult(BaseModel):
+    source: str
+    score: float
+    snippet: str
+
+
+class SemanticSearchResponse(BaseModel):
+    query: str
+    results: list[SemanticSearchResult]

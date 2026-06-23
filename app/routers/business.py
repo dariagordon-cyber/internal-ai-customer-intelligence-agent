@@ -11,6 +11,7 @@ from app.schemas import (
     PipelineInsightsResponse,
     SearchRequest,
     SearchResponse,
+    SemanticSearchResponse,
 )
 from app.services.mock_services import (
     answer_business_question,
@@ -19,6 +20,7 @@ from app.services.mock_services import (
     build_pipeline_insights,
 )
 from app.services.retrieval import keyword_search
+from app.services.semantic_retrieval import semantic_search
 
 router = APIRouter(tags=["Business Intelligence"])
 
@@ -50,3 +52,10 @@ def ask_business_question(request: AskRequest) -> AskResponse:
 @router.post("/search", response_model=SearchResponse)
 def search_internal_documents(request: SearchRequest) -> SearchResponse:
     return keyword_search(request)
+
+
+@router.post("/semantic-search", response_model=SemanticSearchResponse)
+def search_internal_documents_semantically(
+    request: SearchRequest,
+) -> SemanticSearchResponse:
+    return semantic_search(request)
