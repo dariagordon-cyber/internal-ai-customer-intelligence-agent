@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 
 from app.schemas import (
+    AgentRequest,
+    AgentResponse,
     AskRequest,
     AskResponse,
     CustomerBriefRequest,
@@ -14,6 +16,7 @@ from app.schemas import (
     SearchResponse,
     SemanticSearchResponse,
 )
+from app.services.agent_tools import run_agent
 from app.services.hybrid_retrieval import hybrid_search
 from app.services.mock_services import (
     answer_business_question,
@@ -68,3 +71,8 @@ def search_internal_documents_with_hybrid_retrieval(
     request: SearchRequest,
 ) -> HybridSearchResponse:
     return hybrid_search(request)
+
+
+@router.post("/agent", response_model=AgentResponse)
+def run_agentic_business_assistant(request: AgentRequest) -> AgentResponse:
+    return run_agent(request)

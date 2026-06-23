@@ -100,3 +100,24 @@ class HybridSearchResult(BaseModel):
 class HybridSearchResponse(BaseModel):
     query: str
     results: list[HybridSearchResult]
+
+
+class AgentRequest(BaseModel):
+    question: str = Field(..., min_length=1)
+    customer_id: str | None = None
+    region: str | None = None
+
+
+class AgentResponse(BaseModel):
+    question: str
+    selected_tool: Literal[
+        "customer_brief",
+        "pipeline_insights",
+        "meeting_summary",
+        "document_search",
+        "business_question_answer",
+    ]
+    tool_reason: str
+    answer: str
+    sources: list[str]
+    confidence: Literal["low", "medium", "high"]
