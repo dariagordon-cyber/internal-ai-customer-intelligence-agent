@@ -1,6 +1,6 @@
 # Internal AI Customer Intelligence Agent
 
-A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, semantic retrieval, hybrid search, and grounded answer generation using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
+A FastAPI-based backend prototype for an internal AI assistant that supports customer intelligence, sales pipeline analysis, meeting summaries, keyword retrieval, semantic retrieval, hybrid search, grounded answer generation, and agent-style tool orchestration using mock CRM data, sales pipeline records, meeting transcripts, and internal policy documents.
 
 ## Project Goal
 
@@ -14,10 +14,11 @@ The goal of this project is to simulate an internal AI-powered business tool tha
 * Which internal documents are relevant to a business question?
 * Which documents are semantically related to a business problem, even when the exact keywords differ?
 * What grounded answer can be generated from retrieved internal business context?
+* Which internal tool should be used for a given business question?
 
-The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, semantic retrieval with embeddings, hybrid search, retrieval-supported answering, optional LLM-grounded answer generation, Docker configuration, GitHub Actions CI, and tested API endpoints.
+The current version focuses on a clean FastAPI backend, structured data loading, deterministic business logic, keyword retrieval, semantic retrieval with embeddings, hybrid search, retrieval-supported answering, optional LLM-grounded answer generation, agent-style tool selection, Docker configuration, GitHub Actions CI, and tested API endpoints.
 
-Future extensions will add agent tools, cloud deployment, and a basic MCP server for tool integration.
+Future extensions may add cloud deployment and a basic MCP server for tool integration.
 
 ## Current Features
 
@@ -37,6 +38,8 @@ Future extensions will add agent tools, cloud deployment, and a basic MCP server
 * Retrieval-supported `/ask` endpoint
 * Grounded answer generation layer with optional OpenAI integration
 * Fallback grounded answer generation when no `OPENAI_API_KEY` is available
+* Agent-style tool orchestration through the `/agent` endpoint
+* Deterministic tool selection for customer briefs, pipeline insights, meeting summaries, document search, and general business answering
 * Docker configuration for containerized execution
 * GitHub Actions CI for automated test execution
 * Tested business logic with pytest
@@ -53,6 +56,7 @@ Future extensions will add agent tools, cloud deployment, and a basic MCP server
 | POST   | `/search`            | Searches internal policies and meeting transcripts using keyword retrieval                  |
 | POST   | `/semantic-search`   | Searches internal policies and meeting transcripts using embedding-based semantic retrieval |
 | POST   | `/hybrid-search`     | Combines keyword and semantic retrieval into a single ranked result list                    |
+| POST   | `/agent`             | Selects and runs an internal business tool based on the user question                       |
 
 ## Project Structure
 
@@ -64,6 +68,7 @@ internal-ai-customer-intelligence-agent/
     routers/
       business.py
     services/
+      agent_tools.py
       data_loader.py
       mock_services.py
       retrieval.py
@@ -79,8 +84,9 @@ internal-ai-customer-intelligence-agent/
       customer_brief_policy.md
       high_risk_deal_policy.md
   tests/
-    test_health.py
+    test_agent_endpoint.py
     test_business_endpoints.py
+    test_health.py
     test_hybrid_search_endpoint.py
     test_llm_service.py
   .github/
@@ -286,6 +292,50 @@ Example response without an OpenAI API key:
 
 When `OPENAI_API_KEY` is available, the `/ask` endpoint can generate a grounded answer using the retrieved hybrid search context. Without an API key, the project still works using deterministic fallback answer generation.
 
+## Example: Agent Tool Selection
+
+Endpoint:
+
+```http
+POST /agent
+```
+
+Request body:
+
+```json
+{
+  "question": "Give me a customer brief for this account",
+  "customer_id": "C002"
+}
+```
+
+Example response:
+
+```json
+{
+  "question": "Give me a customer brief for this account",
+  "selected_tool": "customer_brief",
+  "tool_reason": "The question asks for customer-level account intelligence.",
+  "answer": "MedCore Analytics: MedCore Analytics is a Healthcare customer in Germany, managed by Luca Bianchi. The current health score is 45. Open deal stages: Proposal. Main risks: Customer health score is below 50.; At least one open deal is marked as high risk.; Recent meeting notes mention implementation or onboarding concerns. Recommended actions: Review the latest customer interactions.; Prioritize follow-up if the health score or deal risk is concerning.; Prepare a concise account update before the next customer call.",
+  "sources": [
+    "crm_customers.csv",
+    "sales_pipeline.csv",
+    "medcore_analytics_2026_06_12.txt"
+  ],
+  "confidence": "high"
+}
+```
+
+The `/agent` endpoint currently uses deterministic tool selection. It routes questions to one of the following internal tools:
+
+* `customer_brief`
+* `pipeline_insights`
+* `meeting_summary`
+* `document_search`
+* `business_question_answer`
+
+This provides a clear agent-style orchestration layer while keeping the portfolio project reproducible and easy to test.
+
 ## Setup
 
 Create and activate a virtual environment:
@@ -322,7 +372,7 @@ pytest
 Expected result:
 
 ```text
-21 passed
+25 passed
 ```
 
 ## Optional OpenAI Configuration
@@ -377,6 +427,30 @@ The LLM service builds a retrieval context from hybrid search results. If `OPENA
 
 This design keeps the project usable in local development, CI, and portfolio review without requiring private credentials.
 
+## Agent Tools Note
+
+The `/agent` endpoint uses a simple agent-style orchestration pattern:
+
+```text
+business question
+  -> tool selection
+  -> selected internal tool
+  -> structured answer
+  -> sources and confidence
+```
+
+The current version includes five tools:
+
+```text
+customer_brief
+pipeline_insights
+meeting_summary
+document_search
+business_question_answer
+```
+
+This layer demonstrates how an internal AI assistant can route different business questions to specialized tools instead of treating all questions as generic chat prompts.
+
 ## Docker
 
 The project includes Docker configuration for containerized execution.
@@ -426,7 +500,7 @@ Workflow file:
 .github/workflows/ci.yml
 ```
 
-Semantic search, hybrid search, and LLM-related tests use mocking where appropriate to keep CI fast and stable. This avoids downloading the embedding model or requiring an OpenAI API key during automated test execution.
+Semantic search, hybrid search, LLM-related tests, and agent endpoint tests use mocking where appropriate to keep CI fast and stable. This avoids downloading the embedding model or requiring an OpenAI API key during automated test execution.
 
 ## Current Test Coverage
 
@@ -453,6 +527,10 @@ The test suite checks:
 * Retrieval context construction for grounded answer generation
 * Fallback grounded answer generation without an API key
 * Empty retrieval result handling in the LLM service
+* Agent tool selection for customer briefs
+* Agent tool selection for pipeline insights
+* Agent tool selection for meeting summaries
+* Agent behavior when required parameters are missing
 
 ## Tech Stack
 
@@ -468,6 +546,7 @@ The test suite checks:
 * Hybrid search
 * OpenAI API integration
 * Grounded answer generation
+* Agent-style tool orchestration
 * Docker
 * GitHub Actions
 * REST API design
@@ -481,7 +560,7 @@ API request
   -> FastAPI router
   -> Pydantic validation
   -> service layer
-  -> data loader / retrieval layer / LLM layer
+  -> data loader / retrieval layer / LLM layer / agent tools layer
   -> structured API response
 ```
 
@@ -527,14 +606,23 @@ business question
   -> structured answer with sources and confidence
 ```
 
+For agent-style tool orchestration, the `/agent` endpoint follows this workflow:
+
+```text
+business question
+  -> deterministic tool selection
+  -> specialized internal business tool
+  -> structured answer with selected tool, reason, sources, and confidence
+```
+
 ## Roadmap
 
 Planned next steps:
 
-1. Add agent-style tools for customer briefs, pipeline insights, meeting summaries, and document search.
-2. Add an agent endpoint that selects the appropriate tool based on the user question.
-3. Deploy the backend to AWS or GCP.
-4. Add a basic MCP server for tool integration.
+1. Deploy the backend to AWS or GCP.
+2. Add a basic MCP server for tool integration.
+3. Optionally add persistent vector storage.
+4. Optionally add a more advanced LLM-based agent planner.
 
 ## Portfolio Relevance
 
@@ -551,7 +639,8 @@ It is intended to show experience with:
 * Combining keyword and semantic retrieval through hybrid search
 * Building retrieval-supported answer generation
 * Adding optional LLM-grounded answer generation with fallback behavior
+* Adding agent-style tool routing for internal business workflows
 * Writing tested backend logic
 * Adding Docker configuration
 * Adding GitHub Actions CI
-* Preparing a foundation for agent tools and production deployment
+* Preparing a foundation for deployment and MCP tool integration
